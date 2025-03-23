@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const { PORT, MONGO_URI } = require("./config");
 const authRoutes = require("./routes/authRoutes");
+const stockRoutes = require("./routes/stocks");
 const ExpressError = require("./utilities/ExpressError");
 const app = express();
 
@@ -13,6 +14,7 @@ app.use(cors());
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/stocks", stockRoutes);
 
 // Connect to MongoDB
 const dbUrl = MONGO_URI;
