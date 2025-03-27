@@ -47,3 +47,8 @@ module.exports.buyStock = async (req, res) => {
   await userStock.save();
   res.status(201).json({ message: "Stock purchased successfully", userStock });
 };
+
+module.exports.showStock = async (req, res) => {
+  const userStocks = await UserStock.find({ userId: req.userId });
+  res.json(userStocks);
+};

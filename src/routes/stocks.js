@@ -10,4 +10,7 @@ router.get("/search", catchAsync(stocks.searchStock));
 // Route to buy a stock
 router.post("/buy", authMiddleware, catchAsync(stocks.buyStock));
 
+// Get all purchased stocks for a user
+router.get("/portfolio", authMiddleware, catchAsync(stocks.showStock));
+
 module.exports = router;
