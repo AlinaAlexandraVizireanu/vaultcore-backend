@@ -8,9 +8,12 @@ const router = express.Router();
 router.get("/search", catchAsync(stocks.searchStock));
 
 // Route to buy a stock
-router.post("/buy", authMiddleware, catchAsync(stocks.buyStock));
+router.post("/order", authMiddleware, catchAsync(stocks.orderStock));
 
 // Get all purchased stocks for a user
 router.get("/portfolio", authMiddleware, catchAsync(stocks.showStock));
+
+// Update quantity of stocks
+
 
 module.exports = router;

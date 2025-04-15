@@ -1,5 +1,6 @@
 const ExpressError = require("../utilities/ExpressError");
 const UserStock = require("../models/UserStock");
+const Transactions = require("../models/Transactions");
 const axios = require("axios");
 const { STOCK_API_URL, STOCK_API_KEY } = require("../config");
 
@@ -28,24 +29,73 @@ module.exports.searchStock = async (req, res) => {
   });
 };
 
-module.exports.buyStock = async (req, res) => {
-  const { symbol, name, quantity, purchasePrice } = req.body;
+module.exports.orderStock = async (req, res) => {
+  const { symbol, name, quantity, price, transactionType } = req.body;
 
-  // Check if all required fields are provided
-  if (!symbol || !name || !quantity || !purchasePrice)
+  if (!symbol || !name || !quantity || !price || !transactionType)
     throw new ExpressError("All fields are required", 400);
 
-  // Create new stock entry
-  const userStock = new UserStock({
+  if (!["buy", "sell"].includes(transactionType)) {
+    throw new ExpressError("Invalid transaction type", 400);
+  }
+
+  const existingStock = await UserStock.findOne({
     userId: req.userId,
     symbol,
-    name,
-    quantity,
-    purchasePrice,
   });
 
-  await userStock.save();
-  res.status(201).json({ message: "Stock purchased successfully", userStock });
+  if (transactionType === "sell") {
+    if (!existingStock || existingStock.quantity < quantity) {
+      throw new ExpressError("Not enough shares to sell", 400);
+    }
+
+    existingStock.quantity -= quantity;
+
+    if (existingStock.quantity === 0) {
+      await UserStock.deleteOne({ _id: existingStock._id });
+    } else {
+      await existingStock.save();
+    }
+  }
+
+  if (transactionType === "buy") {
+    if (existingStock) {
+      const totalCost =
+        existingStock.quantity * existingStock.averagePrice + quantity * price;
+      const newQuantity = existingStock.quantity + quantity;
+      const newAvgPrice = totalCost / newQuantity;
+
+      existingStock.quantity = newQuantity;
+      existingStock.averagePrice = newAvgPrice;
+      await existingStock.save();
+    } else {
+      const newStock = new UserStock({
+        userId: req.userId,
+        symbol,
+        name,
+        quantity,
+        averagePrice: price,
+      });
+
+      await newStock.save();
+    }
+  }
+
+  const transaction = new Transactions({
+    userId: req.userId,
+    symbol,
+    quantity,
+    price,
+    totalValue: quantity * price,
+    transactionType,
+  });
+
+  await transaction.save();
+
+  res.status(201).json({
+    message: "Order processed successfully",
+    transaction,
+  });
 };
 
 module.exports.showStock = async (req, res) => {

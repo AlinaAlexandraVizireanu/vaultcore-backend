@@ -20,13 +20,9 @@ const userStockSchema = new mongoose.Schema(
       required: true,
       min: 1,
     },
-    purchasePrice: {
+    averagePrice: {
       type: Number,
       required: true,
-    },
-    purchaseDate: {
-      type: Date,
-      default: Date.now,
     },
   },
   { timestamps: true }
