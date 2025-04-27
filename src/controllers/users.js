@@ -5,8 +5,12 @@ const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("../config");
 
 module.exports.registerUser = async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, confirmPassword } = req.body;
 
+  // Check if passwords match
+  if (password !== confirmPassword)
+    throw new ExpressError("Passwords do not match", 400);
+  
   // Check if user exists
   let user = await User.findOne({ email });
   if (user) throw new ExpressError("User already exists", 400);
