@@ -5,28 +5,57 @@ const axios = require("axios");
 const { STOCK_API_URL, STOCK_API_KEY } = require("../config");
 
 module.exports.searchStock = async (req, res) => {
-  const { symbol } = req.query;
-  if (!symbol) throw new ExpressError("Symbol is required", 400);
+  const { query } = req.query;
+  if (!query) throw new ExpressError("Query is required", 400);
 
-  const response = await axios.get(`${STOCK_API_URL}`, {
-    params: {
-      function: "GLOBAL_QUOTE",
-      symbol: symbol.toUpperCase(),
-      apikey: STOCK_API_KEY,
-    },
-  });
+  try {
+    const searchResponse = await axios.get(`${STOCK_API_URL}`, {
+      params: {
+        function: "SYMBOL_SEARCH",
+        keywords: query,
+        apikey: STOCK_API_KEY,
+      },
+    });
 
-  const stockData = response?.data?.["Global Quote"];
+    const matches = searchResponse?.data?.bestMatches || [];
+    if (!matches.length)
+      throw new ExpressError("No matching stocks found", 404);
 
-  if (!stockData || Object.keys(stockData).length === 0) {
-    throw new ExpressError("Stock not found", 404);
+    const topMatches = matches.slice(0, 5);
+
+    const enrichedResults = await Promise.all(
+      topMatches.map(async (match) => {
+        const symbol = match["1. symbol"];
+        const name = match["2. name"];
+
+        try {
+          const quoteRes = await axios.get(`${STOCK_API_URL}`, {
+            params: {
+              function: "GLOBAL_QUOTE",
+              symbol,
+              apikey: STOCK_API_KEY,
+            },
+          });
+
+          const quote = quoteRes?.data?.["Global Quote"];
+
+          return {
+            symbol,
+            name,
+            price: quote?.["05. price"] || "N/A",
+            change: quote?.["10. change percent"] || "N/A",
+          };
+        } catch {
+          return { symbol, name, price: "N/A", change: "N/A" }; // fallback
+        }
+      })
+    );
+
+    res.json(enrichedResults);
+  } catch (err) {
+    console.error("Search error:", err.message);
+    throw new ExpressError("Failed to search stocks", 500);
   }
-
-  res.json({
-    symbol: stockData["01. symbol"],
-    price: stockData["05. price"],
-    change: stockData["10. change percent"],
-  });
 };
 
 module.exports.orderStock = async (req, res) => {
