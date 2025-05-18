@@ -27,6 +27,7 @@ module.exports.searchStock = async (req, res) => {
       topMatches.map(async (match) => {
         const symbol = match["1. symbol"];
         const name = match["2. name"];
+        const currency = match["8. currency"];
 
         try {
           const quoteRes = await axios.get(`${STOCK_API_URL}`, {
@@ -42,8 +43,14 @@ module.exports.searchStock = async (req, res) => {
           return {
             symbol,
             name,
+            currency,
+            open: quote?.["02. open"] || "N/A",
+            high: quote?.["03. high"] || "N/A",
+            low: quote?.["04. low"] || "N/A",
             price: quote?.["05. price"] || "N/A",
-            change: quote?.["10. change percent"] || "N/A",
+            previousClose: quote?.["08. previous close"] || "N/A",
+            change: quote?.["09. change"] || "N/A",
+            changePercent: quote?.["10. change percent"] || "N/A",
           };
         } catch {
           return { symbol, name, price: "N/A", change: "N/A" }; // fallback
