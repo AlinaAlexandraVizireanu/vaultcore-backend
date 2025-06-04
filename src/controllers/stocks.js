@@ -1,7 +1,11 @@
 const ExpressError = require("../utilities/ExpressError");
 const UserStock = require("../models/UserStock");
 const Transactions = require("../models/Transactions");
-const getQuoteFromTwelveData = require("../utilities/getQuoteFromTwelveData");
+const {
+  getQuoteFromTwelveData,
+  getAlphaChartData,
+  getTwelveChartData,
+} = require("../utilities/getData");
 const axios = require("axios");
 const {
   STOCK_API_URL,
@@ -9,6 +13,25 @@ const {
   TWELVE_DATA_API_URL,
   TWELVE_DATA_API_KEY,
 } = require("../config");
+
+module.exports.getChartData = async (req, res) => {
+  const { symbol } = req.query;
+  if (!symbol) throw new ExpressError("Symbol is required", 400);
+
+  try {
+    const data = await getAlphaChartData(symbol);
+    res.json(data);
+  } catch (err) {
+    console.warn("Alpha Vantage failed, trying Twelve Data:", err.message);
+    try {
+      const fallbackData = await getTwelveChartData(symbol);
+      res.json(fallbackData);
+    } catch (err2) {
+      console.error("Both providers failed:", err2.message);
+      throw new ExpressError("Failed to fetch chart data", 500);
+    }
+  }
+};
 
 module.exports.searchStock = async (req, res) => {
   const { query } = req.query;
@@ -89,7 +112,7 @@ module.exports.searchStock = async (req, res) => {
     );
 
     const tdMatches = tdSearchRes.data?.data || [];
-    
+
     if (!tdMatches.length) {
       throw new ExpressError("No matches found from either provider", 404);
     }

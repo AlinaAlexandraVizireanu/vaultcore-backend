@@ -13,7 +13,7 @@ router.post("/order", authMiddleware, catchAsync(stocks.orderStock));
 // Get all purchased stocks for a user
 router.get("/portfolio", authMiddleware, catchAsync(stocks.showStock));
 
-// Update quantity of stocks
-
+// Get data for charts
+router.get("/chart", catchAsync(stocks.getChartData));
 
 module.exports = router;
