@@ -15,5 +15,6 @@ router.get("/portfolio", authMiddleware, catchAsync(stocks.showStock));
 
 // Get data for charts
 router.get("/chart", catchAsync(stocks.getChartData));
+router.get("/candlestick", catchAsync(stocks.getCandlestickData));
 
 module.exports = router;

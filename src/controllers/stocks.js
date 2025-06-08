@@ -5,6 +5,8 @@ const {
   getQuoteFromTwelveData,
   getAlphaChartData,
   getTwelveChartData,
+  getAlphaCandlestickData,
+  getTwelveCandlestickData,
 } = require("../utilities/getData");
 const axios = require("axios");
 const {
@@ -13,6 +15,28 @@ const {
   TWELVE_DATA_API_URL,
   TWELVE_DATA_API_KEY,
 } = require("../config");
+
+module.exports.getCandlestickData = async (req, res) => {
+  const { symbol } = req.query;
+  if (!symbol) throw new ExpressError("Symbol is required", 400);
+
+  try {
+    const data = await getAlphaCandlestickData(symbol);
+    res.json(data);
+  } catch (err) {
+    console.warn(
+      "Alpha Vantage candle failed, trying Twelve Data:",
+      err.message
+    );
+    try {
+      const fallbackData = await getTwelveCandlestickData(symbol);
+      res.json(fallbackData);
+    } catch (err2) {
+      console.error("Both candle providers failed:", err2.message);
+      throw new ExpressError("Failed to fetch candlestick chart data", 500);
+    }
+  }
+};
 
 module.exports.getChartData = async (req, res) => {
   const { symbol } = req.query;
