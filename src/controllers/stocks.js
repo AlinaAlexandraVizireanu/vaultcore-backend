@@ -226,6 +226,11 @@ module.exports.orderStock = async (req, res) => {
   });
 };
 
+module.exports.showOrders = async (req, res) => {
+  const userOrders = await Transactions.find({ userId: req.userId });
+  res.json(userOrders);
+};
+
 module.exports.showStock = async (req, res) => {
   const userStocks = await UserStock.find({ userId: req.userId });
   res.json(userStocks);
