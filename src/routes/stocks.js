@@ -20,4 +20,7 @@ router.get("/orders", authMiddleware, catchAsync(stocks.showOrders));
 router.get("/chart", catchAsync(stocks.getChartData));
 router.get("/candlestick", catchAsync(stocks.getCandlestickData));
 
+// Get data for news
+router.get("/news", catchAsync(stocks.showNews));
+
 module.exports = router;

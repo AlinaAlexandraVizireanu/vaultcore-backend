@@ -3,6 +3,7 @@ const {
   STOCK_API_KEY,
   TWELVE_DATA_API_URL,
   TWELVE_DATA_API_KEY,
+  FINNHUB_API_KEY,
 } = require("../config");
 const axios = require("axios");
 
@@ -155,10 +156,21 @@ const getTwelveCandlestickData = async (symbol) => {
     }));
 };
 
+const getNewsData = async () => {
+  const { data } = await axios.get("https://finnhub.io/api/v1/news", {
+    params: {
+      category: "general",
+      token: FINNHUB_API_KEY,
+    },
+  });
+  return data;
+};
+
 module.exports = {
   getQuoteFromTwelveData,
   getAlphaChartData,
   getTwelveChartData,
   getAlphaCandlestickData,
   getTwelveCandlestickData,
+  getNewsData,
 };

@@ -7,6 +7,7 @@ const {
   getTwelveChartData,
   getAlphaCandlestickData,
   getTwelveCandlestickData,
+  getNewsData,
 } = require("../utilities/getData");
 const axios = require("axios");
 const {
@@ -209,6 +210,8 @@ module.exports.orderStock = async (req, res) => {
     }
   }
 
+  const totalValue = Number((quantity * price).toFixed(2));
+
   const transaction = new Transactions({
     userId: req.userId,
     symbol,
@@ -234,4 +237,14 @@ module.exports.showOrders = async (req, res) => {
 module.exports.showStock = async (req, res) => {
   const userStocks = await UserStock.find({ userId: req.userId });
   res.json(userStocks);
+};
+
+module.exports.showNews = async (req, res) => {
+  try {
+    const newsData = await getNewsData();
+    res.json(newsData);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: "Failed to fetch market news" });
+  }
 };
