@@ -12,4 +12,5 @@ module.exports = {
   TWELVE_DATA_API_URL:
     process.env.TWELVE_DATA_API_URL || "https://api.twelvedata.com",
   TWELVE_DATA_API_KEY: process.env.TWELVE_DATA_API_KEY || "supersecretkey",
+  FINNHUB_API_KEY: process.env.FINNHUB_API_KEY || "supersecretkey",
 };

@@ -1,10 +1,9 @@
 const ExpressError = require("../utilities/ExpressError");
 const UserStock = require("../models/UserStock");
 const Transactions = require("../models/Transactions");
+const processOrder = require("../utilities/processOrder");
 const {
   getQuoteFromTwelveData,
-  getAlphaChartData,
-  getTwelveChartData,
   getAlphaCandlestickData,
   getTwelveCandlestickData,
   getNewsData,
@@ -17,45 +16,28 @@ const {
   TWELVE_DATA_API_KEY,
 } = require("../config");
 
-module.exports.getCandlestickData = async (req, res) => {
-  const { symbol } = req.query;
-  if (!symbol) throw new ExpressError("Symbol is required", 400);
-
-  try {
-    const data = await getAlphaCandlestickData(symbol);
-    res.json(data);
-  } catch (err) {
-    console.warn(
-      "Alpha Vantage candle failed, trying Twelve Data:",
-      err.message
-    );
-    try {
-      const fallbackData = await getTwelveCandlestickData(symbol);
-      res.json(fallbackData);
-    } catch (err2) {
-      console.error("Both candle providers failed:", err2.message);
-      throw new ExpressError("Failed to fetch candlestick chart data", 500);
-    }
-  }
-};
-
 module.exports.getChartData = async (req, res) => {
   const { symbol } = req.query;
   if (!symbol) throw new ExpressError("Symbol is required", 400);
 
+  let candles;
+
   try {
-    const data = await getAlphaChartData(symbol);
-    res.json(data);
+    candles = await getAlphaCandlestickData(symbol);
   } catch (err) {
-    console.warn("Alpha Vantage failed, trying Twelve Data:", err.message);
-    try {
-      const fallbackData = await getTwelveChartData(symbol);
-      res.json(fallbackData);
-    } catch (err2) {
-      console.error("Both providers failed:", err2.message);
-      throw new ExpressError("Failed to fetch chart data", 500);
-    }
+    console.warn("Alpha failed, trying Twelve:", err.message);
+    candles = await getTwelveCandlestickData(symbol);
   }
+
+  const line = candles.map((candle) => ({
+    time: candle.time,
+    value: candle.close,
+  }));
+
+  res.json({
+    candles,
+    line,
+  });
 };
 
 module.exports.searchStock = async (req, res) => {
@@ -74,54 +56,13 @@ module.exports.searchStock = async (req, res) => {
     const matches = alphaVintageResponse?.data?.bestMatches || [];
 
     if (matches.length) {
-      const topMatches = matches.slice(0, 2);
+      const results = matches.slice(0, 5).map((match) => ({
+        symbol: match["1. symbol"],
+        name: match["2. name"],
+        currency: match["8. currency"],
+      }));
 
-      const enrichedResults = await Promise.all(
-        topMatches.map(async (match) => {
-          const symbol = match["1. symbol"];
-          const name = match["2. name"];
-          const currency = match["8. currency"];
-
-          try {
-            const quoteRes = await axios.get(`${STOCK_API_URL}`, {
-              params: {
-                function: "GLOBAL_QUOTE",
-                symbol,
-                apikey: STOCK_API_KEY,
-              },
-            });
-
-            if (
-              quoteRes.data.Note &&
-              quoteRes.data.Note.includes("frequency")
-            ) {
-              throw new Error("Alpha Vantage rate limit hit");
-            }
-
-            const quote = quoteRes?.data?.["Global Quote"];
-
-            return {
-              symbol,
-              name,
-              currency,
-              open: quote?.["02. open"] || "N/A",
-              high: quote?.["03. high"] || "N/A",
-              low: quote?.["04. low"] || "N/A",
-              price: quote?.["05. price"] || "N/A",
-              previousClose: quote?.["08. previous close"] || "N/A",
-              change: quote?.["09. change"] || "N/A",
-              changePercent: quote?.["10. change percent"] || "N/A",
-            };
-          } catch (err) {
-            return await getQuoteFromTwelveData(symbol);
-          }
-        })
-      );
-      const deduplicatedResults = Array.from(
-        new Map(enrichedResults.map((stock) => [stock.symbol, stock])).values()
-      );
-
-      return res.json(deduplicatedResults);
+      return res.json(results);
     }
 
     console.warn("Alpha Vantage search failed. Trying Twelve Data...");
@@ -133,7 +74,7 @@ module.exports.searchStock = async (req, res) => {
           symbol: query,
           apikey: TWELVE_DATA_API_KEY,
         },
-      }
+      },
     );
 
     const tdMatches = tdSearchRes.data?.data || [];
@@ -142,19 +83,30 @@ module.exports.searchStock = async (req, res) => {
       throw new ExpressError("No matches found from either provider", 404);
     }
 
-    const topMatches = tdMatches.slice(0, 2);
+    const results = tdMatches.slice(0, 5).map((match) => ({
+      symbol: match.symbol,
+      name: match.instrument_name || match.name || match.symbol,
+      currency: match.currency || "N/A",
+    }));
 
-    const fallbackResults = await Promise.all(
-      topMatches.map((match) => getQuoteFromTwelveData(match.symbol))
-    );
-    const deduplicatedFallback = Array.from(
-      new Map(fallbackResults.map((stock) => [stock.symbol, stock])).values()
-    );
-
-    return res.json(deduplicatedFallback);
+    return res.json(results);
   } catch (err) {
     console.error("Search error:", err.message);
     throw new ExpressError("Failed to search stocks", 500);
+  }
+};
+
+module.exports.getStockQuote = async (req, res) => {
+  const { symbol } = req.query;
+
+  if (!symbol) throw new ExpressError("Symbol is required", 400);
+
+  try {
+    const quote = await getQuoteFromTwelveData(symbol);
+    res.json(quote);
+  } catch (err) {
+    console.error("Quote error:", err.message);
+    throw new ExpressError("Failed to fetch stock quote", 500);
   }
 };
 
@@ -217,7 +169,7 @@ module.exports.orderStock = async (req, res) => {
     symbol,
     quantity,
     price,
-    totalValue: quantity * price,
+    totalValue,
     transactionType,
   });
 

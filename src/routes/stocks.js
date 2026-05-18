@@ -7,6 +7,9 @@ const router = express.Router();
 // Route: Search for a stock
 router.get("/search", catchAsync(stocks.searchStock));
 
+// Route: Get the prices for a stock
+router.get("/quote", catchAsync(stocks.getStockQuote));
+
 // Route to buy a stock
 router.post("/order", authMiddleware, catchAsync(stocks.orderStock));
 
@@ -18,7 +21,6 @@ router.get("/orders", authMiddleware, catchAsync(stocks.showOrders));
 
 // Get data for charts
 router.get("/chart", catchAsync(stocks.getChartData));
-router.get("/candlestick", catchAsync(stocks.getCandlestickData));
 
 // Get data for news
 router.get("/news", catchAsync(stocks.showNews));

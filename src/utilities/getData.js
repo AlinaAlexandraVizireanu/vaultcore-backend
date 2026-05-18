@@ -42,50 +42,6 @@ async function getQuoteFromTwelveData(symbol) {
     };
   }
 }
-const getAlphaChartData = async (symbol) => {
-  const response = await axios.get(STOCK_API_URL, {
-    params: {
-      function: "TIME_SERIES_DAILY",
-      symbol,
-      outputsize: "full",
-      apikey: STOCK_API_KEY,
-    },
-  });
-
-  const timeSeries = response.data?.["Time Series (Daily)"];
-
-  if (!timeSeries) throw new Error("Alpha Vantage data unavailable");
-
-  const startOfYear = new Date(new Date().getFullYear(), 0, 1);
-
-  return Object.entries(timeSeries)
-    .filter(([date]) => new Date(date) >= startOfYear)
-    .reverse() // chronological order
-    .map(([date, values]) => ({
-      time: date,
-      value: parseFloat(values["4. close"]),
-    }));
-};
-
-const getTwelveChartData = async (symbol) => {
-  const startOfYear = new Date(new Date().getFullYear(), 0, 1)
-    .toISOString()
-    .split("T")[0]; // YYYY-MM-DD format
-  const response = await axios.get(`${TWELVE_DATA_API_URL}/time_series`, {
-    params: {
-      symbol,
-      interval: "1day",
-      start_date: startOfYear,
-      apikey: TWELVE_DATA_API_KEY,
-    },
-  });
-
-  const values = response.data?.values || [];
-  return values.reverse().map((point) => ({
-    time: point.datetime,
-    value: parseFloat(point.close),
-  }));
-};
 
 const getAlphaCandlestickData = async (symbol) => {
   const response = await axios.get(STOCK_API_URL, {
@@ -168,8 +124,6 @@ const getNewsData = async () => {
 
 module.exports = {
   getQuoteFromTwelveData,
-  getAlphaChartData,
-  getTwelveChartData,
   getAlphaCandlestickData,
   getTwelveCandlestickData,
   getNewsData,
