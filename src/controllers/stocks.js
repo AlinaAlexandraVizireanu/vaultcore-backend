@@ -113,67 +113,14 @@ module.exports.getStockQuote = async (req, res) => {
 module.exports.orderStock = async (req, res) => {
   const { symbol, name, quantity, price, transactionType } = req.body;
 
-  if (!symbol || !name || !quantity || !price || !transactionType)
-    throw new ExpressError("All fields are required", 400);
-
-  if (!["buy", "sell"].includes(transactionType)) {
-    throw new ExpressError("Invalid transaction type", 400);
-  }
-
-  const existingStock = await UserStock.findOne({
+  const transaction = await processOrder({
     userId: req.userId,
     symbol,
-  });
-
-  if (transactionType === "sell") {
-    if (!existingStock || existingStock.quantity < quantity) {
-      throw new ExpressError("Not enough shares to sell", 400);
-    }
-
-    existingStock.quantity -= quantity;
-
-    if (existingStock.quantity === 0) {
-      await UserStock.deleteOne({ _id: existingStock._id });
-    } else {
-      await existingStock.save();
-    }
-  }
-
-  if (transactionType === "buy") {
-    if (existingStock) {
-      const totalCost =
-        existingStock.quantity * existingStock.averagePrice + quantity * price;
-      const newQuantity = existingStock.quantity + quantity;
-      const newAvgPrice = totalCost / newQuantity;
-
-      existingStock.quantity = newQuantity;
-      existingStock.averagePrice = newAvgPrice;
-      await existingStock.save();
-    } else {
-      const newStock = new UserStock({
-        userId: req.userId,
-        symbol,
-        name,
-        quantity,
-        averagePrice: price,
-      });
-
-      await newStock.save();
-    }
-  }
-
-  const totalValue = Number((quantity * price).toFixed(2));
-
-  const transaction = new Transactions({
-    userId: req.userId,
-    symbol,
+    name,
     quantity,
     price,
-    totalValue,
     transactionType,
   });
-
-  await transaction.save();
 
   res.status(201).json({
     message: "Order processed successfully",
